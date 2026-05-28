@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PRO
+}
+
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  username       String           @unique
+  passwordHash   String
+  tier           SubscriptionTier @default(FREE)
+  flutterwaveCustomerEmail String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  enrollments    Enrollment[]
+  lessonProgress LessonProgress[]
+  codeSnippets   CodeSnippet[]
+  subscriptions  Subscription[]
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  language    String   // HTML, CSS, JAVASCRIPT, PYTHON
+  level       String   // BEGINNER, INTERMEDIATE, ADVANCED
+  imageUrl    String?
+  order       Int      @default(0)
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lessons     Lesson[]
+  enrollments Enrollment[]
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String
+  content     String   // Markdown content
+  videoUrl    String?
+  order       Int      @default(0)
+  courseId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress     LessonProgress[]
+  codeSnippets CodeSnippet[]
+
+  @@unique([courseId, slug])
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId   String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+model LessonProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  language    String
+  level       String
+  imageUrl    String?
+  demoUrl     String?
+  code        String   // Full project code
+  files       Json     // Array of { name, content } objects
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CodeSnippet {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String?
+  language  String
+  code      String
+  output    String?
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  tier          SubscriptionTier   @default(FREE)
+  flutterwaveTxRef String?
+  flutterwaveTxId  String?
+  status        String             @default("active")
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
